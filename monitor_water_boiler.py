@@ -10,6 +10,8 @@ parser = ArgumentParser()
 parser.add_argument("--ip", default="10.20.0.11")
 parser.add_argument("--password")
 parser.add_argument("--db", default="metrics.db")
+parser.add_argument("--on", action="store_true")
+parser.add_argument("--off", action="store_true")
 args = parser.parse_args()
 
 #
@@ -17,6 +19,10 @@ args = parser.parse_args()
 # - connects to wifi if wifi reboots?
 # - connects to wifi if wifi is unavailable when it boots and comes online later
 # - is it up and available long term?
+#
+# Results
+# - power reading have a couple of seconds latency (noticeable from 0 to power)
+#
 #
 
 
@@ -46,17 +52,17 @@ class Db:
 class Shelly:
     
     def __init__(self, ip="10.22.0.11", username="admin", password=""):
-        self.url = f"http://{ip}"
+        self.url = "http://" + ip
         self.auth = HTTPBasicAuth(username, password)
 
     def post(self, path):
-        response = post(f"{self.url}{path}", auth=self.auth, timeout=2)
+        response = post(self.url + path, auth=self.auth, timeout=2)
         if not response.ok:
             raise Exception(str(response))
         return response.json()
 
     def power(self, enabled=False):
-        return self.post(f"/relay/0?turn={'on' if enabled else 'off'}")
+        return self.post("/relay/0?turn=" + ('on' if enabled else 'off'))
     
     def reboot(self):
         return self.post("/reboot")
@@ -72,8 +78,19 @@ class Shelly:
         )
 
 
-db = Db(args.db)
 device = Shelly(args.ip, "admin", args.password)
+
+if args.on:
+    device.power(enabled=True)
+    exit(0)
+
+if args.off:
+    device.power(enabled=False)
+    exit(0)
+
+
+db = Db(args.db)
+
 
 last = None
 while True:
@@ -81,9 +98,12 @@ while True:
         timestamp, latency, power, total, enabled = device.metrics()
         delta = (timestamp - (last or timestamp)).total_seconds()
         db.insert(timestamp, latency, delta, enabled, power, total)
-        print(f"{timestamp.isoformat()} {latency=} {delta=} {enabled=} {power=} {total=}")
+        print(
+            "%s latency=%f delta=%f enabled=%s power=%f total=%f" %
+            (timestamp.isoformat(), latency, delta, enabled, power, total)
+        )
         last = timestamp
     except Exception as e:
-        print(f"failed to fetch {e}")
+        print("failed to fetch", str(e))
         
     sleep(1)
