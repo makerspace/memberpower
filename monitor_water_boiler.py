@@ -22,7 +22,11 @@ args = parser.parse_args()
 #
 # Results
 # - power reading have a couple of seconds latency (noticeable from 0 to power)
-#
+# - first test run in db, ended 2022-05-08
+# - second test run in db, 2022-05-10, reconnect test to the rebooted device, it reconnected
+# - third test run in db, 2022-05-10, reconnect test to the rebooted device (but wifi down when booted), it reconnected
+# - after 10 days the wlan connection died and did not reconnect, came back after unplugging and plugging the device,
+#   it continued to be on
 #
 
 
